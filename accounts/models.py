@@ -99,6 +99,8 @@ gender_choices = [
         ("F", "Female"),
     ]
 
+def user_profile_picture_path(self, filename):
+    return f"profile_picture/{self.username}/{filename}"
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
@@ -113,7 +115,7 @@ class UserProfile(models.Model):
     
     gender = models.CharField(max_length=1, choices=gender_choices, null=True)
     
-    profile_picture = models.ImageField(upload_to="profile_pics/", blank=True, null=True)
+    profile_picture = models.ImageField(upload_to=user_profile_picture_path, blank=True, null=True)
     
     
     basic_information = models.JSONField(

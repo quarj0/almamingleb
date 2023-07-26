@@ -5,6 +5,7 @@ from django.http import JsonResponse
 from rest_framework.generics import UpdateAPIView
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
+from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login
 from django.utils.http import urlsafe_base64_decode
@@ -32,10 +33,19 @@ from .serializers import (
 
 User = get_user_model()
 
-
-class RegisterView(CreateAPIView):
-    queryset = User.objects.all()
-    serializer_class = UserRegistrationSerializer
+class UserRegistrationView(APIView):
+    def post(self, request, format=None):
+        serializer = UserRegistrationSerializer(data=request.data)
+        if serializer.is_valid():
+            user_profile = User.objects.create_user(
+                serializer.validated_data["username"],
+                serializer.validated_data["email"],
+                serializer.validated_data["password"],
+                university=serializer.validated_data.get("university"),
+                gender=serializer.validated_data.get("gender"),
+            )
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class PasswordResetView(GenericAPIView):

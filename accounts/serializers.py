@@ -56,7 +56,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         return default_token_generator.make_token(user)
 
     def create(self, validated_data):
-        user_profile = UserProfile.objects.create_user(
+        user_profile = User.objects.create_user(
             validated_data["username"],
             validated_data["email"],
             validated_data["password"],
