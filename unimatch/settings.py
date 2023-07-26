@@ -120,7 +120,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # JWT settings
 JWT_AUTH = {
     'AUTH_HEADERS_TYPES': ('JWT',),
-    'JWT_SECRET_KEY': 's7$q54qj!t9lb**0&g9#p#e_ka%sv3$plx2f$q6gf9rh=bc*ze',  # Replace with your own secret key
+    'JWT_SECRET_KEY': config('JWT_SECRET_KEY'),  
     'JWT_EXPIRATION_DELTA': timedelta(days=1),  # Example: Token expiration of 1 day
     'JWT_ALLOW_REFRESH': True,
     'JWT_REFRESH_EXPIRATION_DELTA': timedelta(days=7),  # Example: Refresh token expiration of 7 days

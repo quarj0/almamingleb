@@ -13,8 +13,12 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from .models import Favorite, ProfileView, UserProfile, Message
+from django.contrib.auth import get_user_model
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.encoding import force_str
+from rest_framework.generics import GenericAPIView, CreateAPIView
+from django.shortcuts import get_object_or_404
 from .serializers import (
-    LoginSerializer,
     UserProfileSerializer,
     ProfileViewSerializer,
     FavoriteSerializer,
@@ -25,16 +29,38 @@ from .serializers import (
 )
 
 
-class RegisterView(APIView):
+
+User = get_user_model()
+
+
+class RegisterView(CreateAPIView):
+    queryset = User.objects.all()
     serializer_class = UserRegistrationSerializer
 
-    def post(self, request):
-        serializer = self.serializer_class(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+class PasswordResetView(GenericAPIView):
+    serializer_class = CustomPasswordResetSerializer
+
+    def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        uid, token = serializer.send_reset_email()
+        return Response({"uid": uid, "token": token})
+
+
+class PasswordResetConfirmView(GenericAPIView):
+    serializer_class = CustomChangePasswordSerializer
+
+    def post(self, request, uidb64, token):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        uid = force_str(urlsafe_base64_decode(uidb64))
+        user = get_object_or_404(User, pk=uid)
+        if default_token_generator.check_token(user, token):
+            serializer.change_password()
+            return Response({"message": "Password has been reset successfully."}, status=status.HTTP_200_OK)
+        else:
+            return Response({"message": "Invalid password reset link."}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class VerifyEmailView(APIView):
@@ -63,51 +89,27 @@ class VerifyEmailView(APIView):
 
 
 class LoginView(APIView):
-    def post(self, request, format=None):
-        serializer = LoginSerializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.validated_data["user"]
-            login(request, user)
-            return Response({"message": "Successfully logged in"})
-        else:
-            return Response(serializer.errors, status=400)
-        
-
-class CustomPasswordResetView(generics.GenericAPIView):
-    serializer_class = CustomPasswordResetSerializer
-
-    def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response({"detail": "Password reset email has been sent."})
-
-
-class CustomPasswordResetConfirmView(generics.GenericAPIView):
-    serializer_class = CustomChangePasswordSerializer
-
-    def get_user(self, uidb64):
+    permission_classes = [permissions.AllowAny]
+    def post(self, request):
         try:
-            uid = urlsafe_base64_decode(uidb64).decode()
-            user = User.objects.get(pk=uid)
-            return user
-        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
-            return None
+            username = request.data.get("username")
+            password = request.data.get("password")
+            user = authenticate(request, username=username, password=password)
+            if user is not None:
+                if user.is_active:
+                    login(request, user)
+                    return JsonResponse({"message": "Login successful"})
+                else:
+                    return JsonResponse({"error": "Your account is disabled."}, status=400)
+            else:
+                return JsonResponse(
+                    {"error": "Invalid login details supplied."}, status=400
+                )
+        except:
+            return Response({"Oops!": "Something went wrong when trying to login. \n Please try again later."})
+            
+    
 
-    def post(self, request, uidb64):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = self.get_user(uidb64)
-        if user is not None and serializer.data.get("new_password"):
-            user.set_password(serializer.data.get("new_password"))
-            user.save()
-            return Response(
-                {
-                    "message": _("Password reset successfully."),
-                },
-                status=status.HTTP_200_OK,
-            )
-        return Response({"message": _("Invalid password reset link.")}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class CustomChangePasswordView(generics.GenericAPIView):
