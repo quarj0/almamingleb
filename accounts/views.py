@@ -5,7 +5,6 @@ from django.http import JsonResponse
 from rest_framework.generics import UpdateAPIView
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
-from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login
 from django.utils.http import urlsafe_base64_decode
@@ -17,7 +16,7 @@ from .models import Favorite, ProfileView, UserProfile, Message
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.encoding import force_str
-from rest_framework.generics import GenericAPIView, CreateAPIView
+from rest_framework.generics import GenericAPIView
 from django.shortcuts import get_object_or_404
 from .serializers import (
     UserProfileSerializer,
@@ -133,7 +132,7 @@ class CustomChangePasswordView(generics.GenericAPIView):
 
 
 
-@csrf_exempt
+
 def search(request):
     if request.method == "POST":
         age = request.POST.get("age")
